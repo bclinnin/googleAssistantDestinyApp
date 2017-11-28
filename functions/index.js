@@ -21,11 +21,19 @@ const dictionary=
  16:"The Emissary at the Inner Circle",
  17:"Lord Saladin at the Tower"};
 
+//store the possible range of power levels
+const power_levels=
+{"max":"300",
+ "mid":"296-299",
+ "low":"295"
+}
+
 exports.engram_test = functions.https.onRequest((request,response) =>{
 
-  var current_300 = [];
-  var current_296_299 = [];
-  var current_295 = [];
+
+  var arrMax = [];
+  var arrMid = [];
+  var arrLow = [];
 
 	const https = require("https");
 	const url =
@@ -38,31 +46,45 @@ exports.engram_test = functions.https.onRequest((request,response) =>{
 	    body += data;
 	  });
 	  res.on("end", () => {
-         var jsonps = JSON.parse(body);
-         let mega_string = "";
-         for (var key in jsonps){
-            if(jsonps.hasOwnProperty(key)){
-               //check if this vendor currently has 300 and is verified
-               if( (jsonps[key].type === 3) && (jsonps[key].verified ===1) ){
-                  //add this vendor to the 300 array
-                  current_300.push(dictionary[jsonps[key].vendor]);
+      var jsonps = JSON.parse(body);
+      let mega_string = "";
+      for (var key in jsonps){
+        if(jsonps.hasOwnProperty(key)){
 
-               }
-               //check for 296-299
-               else if((jsonps[key].type === 1)&&(jsonps[key].verified ===1)){
-                  current_296_299.push(dictionary[jsonps[key].vendor]);
-               }
-               //check for 295
-               else if((jsonps[key].type === 0)&&(jsonps[key].verified ===1)){
-                  current_295.push(dictionary[jsonps[key].vendor]);
-               }
-               
+          //record data if vendor is verified
+          if(jsonps[key].verified===1){
+            switch(jsonps[key].type){
+              case 3:
+                arrMax.push(dictionary[jsonps[key].vendor]);
+                break;
+
+              case 1:
+                arrMid.push(dictionary[jsonps[key].vendor]);
+                break;
+
+              case 0:
+                arrLow.push(dictionary[jsonps[key].vendor]);
+                break;
+
+              default:
+                break;
             }
-         }
-         for (var vendor in current_296_299){
-            mega_string = mega_string + current_296_299[vendor] + '  ';
-         }
-         response.send(mega_string);
+          }               
+        }
+      }
+      mega_string+="~~~~MAX~~~~";
+      for (var vendor in arrMax){
+        mega_string = mega_string + arrMax[vendor] + '  ';
+      }
+      mega_string+="~~~~MID~~~~";
+      for (var vendor in arrMid){
+        mega_string = mega_string + arrMid[vendor] + '  ';
+      }
+      mega_string+="~~~~LOW~~~~";
+      for (var vendor in arrLow){
+        mega_string = mega_string + arrLow[vendor] + '  ';
+      }
+      response.send(mega_string);
 	  });
 	});
 
@@ -81,6 +103,9 @@ const NO_INPUTS = [
 
 exports.maxEngram = functions.https.onRequest((request, response) => {
   const app = new ActionsSdkApp({request, response});
+  var arrMax = [];
+  var arrMid = [];
+  var arrLow = [];
 /*
   function mainIntent (app) {
     console.log('mainIntent');
@@ -92,14 +117,59 @@ exports.maxEngram = functions.https.onRequest((request, response) => {
 */
   function mainIntent (app) {
     console.log('mainIntent');
-    //let inputPrompt = app.buildInputPrompt(true, '<speak>Hello, I am engram 300 bot! <break time="1"/> ' +
-    //  'I will now go pull down current 300 engram data.</speak>', NO_INPUTS);
-    //app.tell('<speak>Hello, I am engram 300 bot! <break time="1"/> ' +
-    //  'I will now go pull down current 296 to 299 engram data.</speak>');
-    const inputPrompt = app.buildInputPrompt(true,'<speak>Hi! <break time="1"/>'+
-                      'Please say 300, 296 to 299, 295, or all. </speak>',
-                      NO_INPUTS);
-    app.ask(inputPrompt);
+
+    var inputString = "";
+    const https = require("https");
+    const url =
+    "https://api.vendorengrams.xyz/getVendorDrops?key=63a229c3c4f4efda27df979c3139e48e";
+  
+    https.get(url, res => {
+      res.setEncoding("utf8");
+      let body = "";
+      res.on("data", data => {
+        body += data;
+      });
+      res.on("end", () => {
+        var jsonps = JSON.parse(body);
+        let mega_string = "";
+        for (var key in jsonps){
+          if(jsonps.hasOwnProperty(key)){
+
+            //record data if vendor is verified
+            if(jsonps[key].verified===1){
+              switch(jsonps[key].type){
+                case 3:
+                  arrMax.push(dictionary[jsonps[key].vendor]);
+                  break;
+
+                case 1:
+                  arrMid.push(dictionary[jsonps[key].vendor]);
+                  break;
+
+                case 0:
+                  arrLow.push(dictionary[jsonps[key].vendor]);
+                  break;
+
+                default:
+                  break;
+              }
+            }               
+          }
+        }
+        if(arrMax.length == 0){
+          inputString+='<speak>There are currently no max power level engrams.';
+        }
+        else{
+          inputString += '<speak>Here are the max power level engrams.';  
+          for (var vendor in arrMax){
+            inputString = inputString + arrMax[vendor] +'.';
+          }
+        }
+        inputString+='<break time="1"/>Say more for more options or quit to quit.</speak>';
+        const inputPrompt = app.buildInputPrompt(true,inputString,NO_INPUTS);
+        app.ask(inputPrompt);
+      });
+    });
   }
 /*
   function rawInput (app) {
@@ -113,15 +183,11 @@ exports.maxEngram = functions.https.onRequest((request, response) => {
     }
   }
 */
-function rawInput (app) {
+  function rawInput (app) {
     console.log('rawInput');
     var selection;
-    if (app.getRawInput() === '300') {
-      //app.tell('You said 300');
-      selection = '300';
-    }
-    else if(app.getRawInput() === '296 to 299'){
-      //app.tell('You said 296 to 299');
+    if(app.getRawInput() === 'more'){
+      app.tell('path not yet implemented');
       selection = '296 to 299';
     } 
     else if(app.getRawInput() === '295'){
