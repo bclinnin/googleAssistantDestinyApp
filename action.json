@@ -1,0 +1,21 @@
+{
+  "actions": [
+    {
+      "description": "Default Welcome Intent",
+      "name": "MAIN",
+      "fulfillment": {
+        "conversationName": "grab_engram_data"
+      },
+      "intent": {
+        "name": "actions.intent.MAIN"
+      }
+    }
+  ],
+  "conversations": {
+    "grab_engram_data": {
+      "name": "grab_engram_data",
+      "url": "https://us-central1-engram300-d5474.cloudfunctions.net/maxEngram",
+      "fulfillmentApiVersion": 2
+    }
+  }
+}
