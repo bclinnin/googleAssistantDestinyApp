@@ -19,17 +19,17 @@ const dictionary=
  14:"Executor Hideo at the Tower",
  15:"Arach Jalaal at the Tower",
  16:"The Emissary at the Inner Circle",
- 17:"Lord Saladin at the Tower"};
-
+ 17:"Lord Saladin at the Tower",
+ 18:"Brother Vance on Mercury"};
 //store the possible range of power levels
 const power_levels=
-{"max":"300",
- "mid":"296-299",
- "low":"295"
-}
+{"max":"330",
+ "mid":"326-329",
+ "low":"325"
+};
+//delcare arrays to hold response from vendorengrams API
 
 exports.engram_test = functions.https.onRequest((request,response) =>{
-
 
   var arrMax = [];
   var arrMid = [];
@@ -106,15 +106,7 @@ exports.maxEngram = functions.https.onRequest((request, response) => {
   var arrMax = [];
   var arrMid = [];
   var arrLow = [];
-/*
-  function mainIntent (app) {
-    console.log('mainIntent');
-    let inputPrompt = app.buildInputPrompt(true, '<speak>Hi! <break time="1"/> ' +
-      'I can read out an ordinal like ' +
-      '<say-as interpret-as="ordinal">123</say-as>. Say a number.</speak>', NO_INPUTS);
-    app.ask(inputPrompt);
-  }
-*/
+
   function mainIntent (app) {
     console.log('mainIntent');
 
@@ -165,49 +157,54 @@ exports.maxEngram = functions.https.onRequest((request, response) => {
             inputString = inputString + arrMax[vendor] +'.';
           }
         }
-        inputString+='<break time="1"/>Say more for more options or quit to quit.</speak>';
+        inputString+='<break time=".25"/>Say more for more options or quit at any time to quit.</speak>';
         const inputPrompt = app.buildInputPrompt(true,inputString,NO_INPUTS);
         app.ask(inputPrompt);
       });
     });
   }
-/*
-  function rawInput (app) {
-    console.log('rawInput');
-    if (app.getRawInput() === 'bye') {
-      app.tell('Goodbye!');
-    } else {
-      let inputPrompt = app.buildInputPrompt(true, '<speak>You said, <say-as interpret-as="ordinal">' +
-        app.getRawInput() + '</say-as></speak>', NO_INPUTS);
-      app.ask(inputPrompt);
-    }
-  }
-*/
-  function rawInput (app) {
-    console.log('rawInput');
-    var selection;
-    if(app.getRawInput() === 'more'){
-      app.tell('path not yet implemented');
-      selection = '296 to 299';
-    } 
-    else if(app.getRawInput() === '295'){
-      //app.tell('You said 295');
-      selection = '295';
-    }
-    else {
-      let inputPrompt = app.buildInputPrompt(true, '<speak>You said, <say-as interpret-as="ordinal">' +
-        app.getRawInput() + '</say-as></speak>', NO_INPUTS);
-      app.ask(inputPrompt);
-    }
-    console.log("Chosen value:"+selection);
-    var current_300 = [];
-    var current_296_299 = [];
-    var current_295 = [];
 
+  function rawInput (app) {
+    console.log('rawInput');
+    var inputPrompt;
+    var userInput = app.getRawInput().toLowerCase();
+    var userInputString = ''
+    switch(userInput){
+      //entry point to raw Input where user says "more"
+      case 'more':      
+        userInputString = 'Please say the power range you are interested in. max, mid, or low.';
+        inputPrompt = app.buildInputPrompt(true,userInputString,NO_INPUTS);
+        app.ask(inputPrompt);
+        break;
+
+      case 'no':
+        inputPrompt = app.buildInputPrompt(true, '?', NO_INPUTS);
+        break;
+
+      //Use case for user saying a valid power level
+      case 'max':
+      case 'mid':
+      case 'low':
+        handlePowerResponse(app,userInput);
+        break;        
+
+      default:
+        InputPrompt = app.buildInputPrompt(true,'Sorry, I didn\'t catch that', NO_INPUTS);
+        app.ask(InputPrompt);
+        break;
+    }
+    
+  }
+
+  function handlePowerResponse(app,userInput){
+    var selection;
+    var powerSelection;
+    var selected_arr;
+    var inputString = '';
     const https = require("https");
     const url =
-      "https://api.vendorengrams.xyz/getVendorDrops?key=63a229c3c4f4efda27df979c3139e48e";
-    
+    "https://api.vendorengrams.xyz/getVendorDrops?key=63a229c3c4f4efda27df979c3139e48e";
+  
     https.get(url, res => {
       res.setEncoding("utf8");
       let body = "";
@@ -215,66 +212,69 @@ exports.maxEngram = functions.https.onRequest((request, response) => {
         body += data;
       });
       res.on("end", () => {
-          var jsonps = JSON.parse(body);
-          let mega_string = "";
-          for (var key in jsonps){
-             if(jsonps.hasOwnProperty(key)){
-                //check if this vendor currently has 300 and is verified
-                if( (jsonps[key].type === 3) && (jsonps[key].verified ===1) ){
-                   //add this vendor to the 300 array
-                   current_300.push(dictionary[jsonps[key].vendor]);
+        var jsonps = JSON.parse(body);
+        let mega_string = "";
+        for (var key in jsonps){
+          if(jsonps.hasOwnProperty(key)){
+            //record data if vendor is verified
+            if(jsonps[key].verified===1){
+              switch(jsonps[key].type){
+                case 3:
+                  arrMax.push(dictionary[jsonps[key].vendor]);
+                  break;
 
-                }
-                //check for 296-299
-                else if((jsonps[key].type === 1)&&(jsonps[key].verified ===1)){
-                   current_296_299.push(dictionary[jsonps[key].vendor]);
-                }
-                //check for 295
-                else if((jsonps[key].type === 0)&&(jsonps[key].verified ===1)){
-                   current_295.push(dictionary[jsonps[key].vendor]);
-                }
-                
-             }
-          }
-          
-          var temp_string = "<speak>The current vendors with power level "+selection+" engrams are ";
-          
-          if(selection =='300'){
-            if(current_300.length == 0){
-              temp_string = temp_string + "none";
-            }
-            else{
-              for (var vendor in current_300){
-                temp_string = temp_string + current_300[vendor] + '<break time="1"/>   ';
+                case 1:
+                  arrMid.push(dictionary[jsonps[key].vendor]);
+                  break;
+
+                case 0:
+                  arrLow.push(dictionary[jsonps[key].vendor]);
+                  break;
+
+                default:
+                  break;
               }
-            }  
+            }               
           }
-          else if(selection =='296 to 299'){
-            if(current_296_299.length == 0){
-              temp_string = temp_string + "none";
-            }
-            else{
-              for (var vendor in current_296_299){
-                temp_string = temp_string + current_296_299[vendor] + '<break time="1"/>   ';
-              }  
-            }
-          }
-          else if(selection =='295'){
-            if(current_295.length == 0){
-              temp_string = temp_string + "none";
-            }
-            else{
-              for (var vendor in current_295){
-                temp_string = temp_string + current_295[vendor] + '<break time="1"/>   ';
-              }  
-            }
-          }
-          
-          temp_string+='.</speak>';
-          app.tell(temp_string);
+        }
+
+        switch(userInput){
+          case 'max':
+            selected_arr = arrMax;
+            break;
+          case 'mid':
+            selected_arr = arrMid;
+            break;
+          case 'low':
+            selected_arr = arrLow;
+            break;
+          default:
+            console.log("Could not identify a power level within handlePowerResponse");
+            break;
+        }
+        console.log("User content was "+userInput);
+        console.log("Logging array content");
+        console.log(selected_arr);
+        console.log(arrLow);
+        console.log(arrMid);
+        console.log(arrMax);
+        if(selected_arr.length === 0){
+          inputString+='<speak>There are currently no '+userInput+' power level engrams.';
+        }else{
+          inputString += '<speak>Here are the '+userInput+' power level engrams.';  
+          for (var vendor in selected_arr){
+            inputString = inputString + selected_arr[vendor] +'.';
+          }      
+        }
+        //prompt the user with continued dialog
+        inputString +='Please say the power range you are interested in. max, mid, or low.';
+
+        var inputPrompt = app.buildInputPrompt(true,inputString,NO_INPUTS);
+        app.ask(inputPrompt);
       });
     });
   }
+
   let actionMap = new Map();
   actionMap.set(app.StandardIntents.MAIN, mainIntent);
   actionMap.set(app.StandardIntents.TEXT, rawInput);
